@@ -424,6 +424,35 @@
     padding-left: max(80px, calc((100% - 1280px) / 2));
     padding-right: max(80px, calc((100% - 1280px) / 2));
   }
+  /* Product spotlight scrolls up normally until its OWN BOTTOM EDGE (end)
+     reaches the bottom of the viewport — i.e. until the whole section,
+     including the CTA row, has fully scrolled into view — then freezes
+     there, holds, and only then does the video section that follows climb
+     up on TOP of it via plain, ordinary document flow (no JS transform on
+     the video at all — z-index does the covering). JS sets `top` on
+     .spotlight to (viewportHeight - contentHeight) rather than a
+     hardcoded 0 — that's the sticky offset at which the element's bottom
+     edge lands exactly on the viewport's bottom edge, so native
+     position:sticky itself does the "freeze once fully visible" part, no
+     scroll-position math needed elsewhere. .spotlight-pin is a plain
+     (non-sticky) budget wrapper — JS sizes it to the spotlight's own
+     natural height plus extra scroll room, which is what lets .spotlight
+     stay frozen for a while before the wrapper's budget runs out and it
+     releases, letting .video (a later sibling with its own opaque black
+     background and a higher stacking order) rise into view and cover it.
+     JS disables this pin entirely — falling back to plain, un-pinned
+     scrolling — whenever the spotlight's own content is dramatically
+     taller than the viewport, since freezing it bottom-anchored in that
+     case would crop its TOP (the heading) instead. Desktop-only — at
+     tablet/mobile the spotlight is simply static, no pin, no overlap. */
+  @media (min-width: 1025px) {
+    .spotlight-pin {
+      position: relative;
+    }
+    .spotlight-pin .spotlight {
+      position: sticky;
+    }
+  }
   .spotlight__row {
     display: flex;
     gap: 80px;
@@ -617,6 +646,8 @@
 
   /* ---------- Brand story video ---------- */
   .video {
+    position: relative;
+    z-index: 5; /* renders on top of the still-pinned .spotlight as it scrolls up over it */
     width: 100%;
     padding: 0;
     background: #000;
@@ -634,14 +665,20 @@
   }
   .video__poster {
     position: absolute;
-    inset: 0;
+    left: 0;
+    top: -12%;
     width: 100%;
-    height: 100%;
+    /* Oversized vs. the frame so it has room to slide as it parallaxes —
+       .video__frame clips the overflow via overflow:hidden, so the extra
+       height never peeks past the frame's edges. JS (see script) shifts
+       this translateY based on scroll position for the actual motion. */
+    height: 124%;
     object-fit: cover;
     display: block;
     border: 0;
     padding: 0;
     cursor: pointer;
+    will-change: transform;
   }
   .video__play {
     position: absolute;
@@ -1439,26 +1476,40 @@
   .hero__content.reveal.is-visible {
     transform: translateY(-50%);
   }
+  /* Highlight cards: always fully visible, no fade/translate at all. The
+     "reveal" here is achieved purely by native scroll — see .hero-pin
+     below — not by any opacity/transform animation. */
   .highlight-cards.reveal-gate {
-    opacity: 0;
-    transform: translateY(20px);
-    transition: opacity 0.7s cubic-bezier(0.16, 0.8, 0.24, 1), transform 0.7s cubic-bezier(0.16, 0.8, 0.24, 1);
-  }
-  .highlight-cards.reveal-gate.is-visible {
     opacity: 1;
-    transform: translateY(0);
   }
-  /* Hero starts a bit taller so there's no dead gray gap below it while the
-     highlight cards are still hidden pre-scroll; it recedes back to its
-     normal height in sync with the cards fading in. Desktop-only — at the
-     tablet/mobile breakpoints the hero is already height:auto. */
+  /* Nav + hero stay visually pinned together at the top of the viewport
+     from the very first pixel of scroll — a true parallax feel where the
+     cards below are already sliding into view underneath while the hero
+     shrinks, with no dead "nothing is happening yet" phase first. Once the
+     hero has fully shrunk to its normal 527px height, the pin releases and
+     the page resumes normal scrolling.
+     Mechanics: .hero-pin is a plain (non-sticky) budget wrapper sized to
+     exactly the pinned content's TALLEST state (nav height + hero's 687px
+     start height). .hero-pin__sticky — nav + hero together — is
+     position:sticky, top:0, so it sticks immediately (it's already at the
+     top of the page). As JS shrinks the hero from 687px down to 527px in
+     lockstep with scroll position, the sticky block's own height shrinks
+     with it, and native sticky mechanics release the pin at exactly the
+     scroll position where the shrink finishes — no separate buffer value
+     to keep in sync by hand, no plateau before or after. Desktop-only —
+     at the tablet/mobile breakpoints nav/hero are simply static, no pin,
+     no height animation. */
   @media (min-width: 1025px) {
-    .hero {
-      height: 687px;
-      transition: height 0.7s cubic-bezier(0.16, 0.8, 0.24, 1);
+    .hero-pin {
+      position: relative;
+      height: calc(var(--nav-height) + 687px);
     }
-    .hero.hero--revealed {
-      height: 527px;
+    .hero-pin__sticky {
+      position: sticky;
+      top: 0;
+    }
+    .hero-pin__sticky .hero {
+      height: 687px;
     }
   }
   /* Why-partner-with-us feature icons: a bouncier "pop" on top of the grid's
@@ -1591,7 +1642,7 @@
     stroke-dashoffset: 0;
   }
   @media (prefers-reduced-motion: reduce) {
-    .reveal, .highlight-cards.reveal-gate {
+    .reveal {
       transition: none !important;
       opacity: 1 !important;
       transform: none !important;
@@ -1644,7 +1695,13 @@
     }
   }
   @media (prefers-reduced-motion: reduce) and (min-width: 1025px) {
-    .hero {
+    .hero-pin {
+      height: auto !important;
+    }
+    .hero-pin__sticky {
+      position: relative !important;
+    }
+    .hero-pin__sticky .hero {
       height: 527px !important;
       transition: none !important;
     }
@@ -1821,6 +1878,8 @@
 
 <div class="page-stub">
 
+  <div class="hero-pin">
+  <div class="hero-pin__sticky">
   <nav class="nav">
     <!-- Logo -->
     <a href="#" class="nav__logo" aria-label="Penosil home">
@@ -1883,18 +1942,20 @@
   </nav>
 
   <!-- Hero / Background -->
-  <section class="hero">
-    <div class="hero__content reveal">
-      <div class="hero__text">
-        <h1 class="hero__title">Grow your business with us</h1>
-        <p class="hero__subtitle">Subheading with value proposition</p>
+    <section class="hero">
+      <div class="hero__content reveal">
+        <div class="hero__text">
+          <h1 class="hero__title">Grow your business with us</h1>
+          <p class="hero__subtitle">Subheading with value proposition</p>
+        </div>
+        <div class="hero__buttons">
+          <a href="#" class="hero__btn">Apply now</a>
+          <a href="#" class="hero__btn">Where to buy</a>
+        </div>
       </div>
-      <div class="hero__buttons">
-        <a href="#" class="hero__btn">Apply now</a>
-        <a href="#" class="hero__btn">Where to buy</a>
-      </div>
-    </div>
-  </section>
+    </section>
+  </div>
+  </div>
 
   <div class="section-bg">
     <!-- Highlight cards -->
@@ -1950,6 +2011,7 @@
   </div>
 
   <!-- Product spotlight -->
+  <div class="spotlight-pin">
   <section class="spotlight">
     <div class="spotlight__row">
       <div class="spotlight__media reveal">
@@ -2001,6 +2063,7 @@
       </div>
     </div>
   </section>
+  </div>
 
   <!-- Brand story video -->
   <section class="video">
@@ -2299,21 +2362,190 @@
     document.addEventListener('DOMContentLoaded', function () {
       var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-      // Highlight cards: stay hidden until the user actually scrolls, not
-      // just "until in view" — they overlap the hero and are often already
-      // partly visible on load.
-      var gate = document.querySelector('.reveal-gate');
-      var hero = document.querySelector('.hero');
-      if (gate) {
-        if (reduceMotion) {
-          gate.classList.add('is-visible');
-          if (hero) { hero.classList.add('hero--revealed'); }
-        } else {
-          window.addEventListener('scroll', function revealGate() {
-            gate.classList.add('is-visible');
-            if (hero) { hero.classList.add('hero--revealed'); }
-          }, { passive: true, once: true });
+      // All three scroll-tied effects below (hero shrink, spotlight/video
+      // overlap, video background-parallax) are driven from ONE shared
+      // rAF-throttled scroll/resize handler, rather than one listener per
+      // effect. Reason: each effect's update needs to READ layout (a
+      // cached measurement or window.scrollY/innerHeight) and then WRITE a
+      // style. With three independent listeners, the browser was running
+      // them back-to-back within the same animation frame — hero writes
+      // its height, then the next effect's read forces the browser to
+      // synchronously re-run layout to account for that write before it
+      // can answer, then IT writes, forcing the next read to resync again,
+      // and so on ("layout thrashing"). That's what showed up as jittery,
+      // stuttery scrolling that felt like it was fighting the user,
+      // especially on trackpad scrolling where scroll events fire rapidly.
+      // Batching into read-everything-then-write-everything, once per
+      // frame, avoids the forced synchronous relayouts entirely.
+      //
+      // To make the "read" side cheap enough to run every frame without
+      // itself forcing layout, every effect below is expressed in terms of
+      // window.scrollY / window.innerWidth / window.innerHeight (always
+      // free to read) plus a handful of measurements CACHED once up front
+      // (on load, resize, and relevant image loads) rather than measured
+      // live via getBoundingClientRect() on every scroll tick.
+      var hero = document.querySelector('.hero-pin .hero');
+      var spotlightPin = document.querySelector('.spotlight-pin');
+      var spotlightEl = spotlightPin ? spotlightPin.querySelector('.spotlight') : null;
+      var overlapVideo = document.querySelector('.video');
+      var videoPoster = document.querySelector('.video__poster');
+      var videoFrame = document.querySelector('.video__frame');
+
+      var HERO_MAX_HEIGHT = 687;
+      var HERO_MIN_HEIGHT = 527;
+      var HERO_SCROLL_RANGE = HERO_MAX_HEIGHT - HERO_MIN_HEIGHT;
+      var SPOTLIGHT_OVERLAP_RANGE = 400; // px of scroll the spotlight's CSS sticky pin lasts before the video scrolls up over it
+      // How much of the spotlight's top edge is allowed to sit above the
+      // fold at the moment it freezes (bottom-anchored — see below). Only
+      // needs to rule out genuinely extreme mismatches (a very tall
+      // spotlight on a very short window cropping the heading), not
+      // everyday laptop-sized browser windows.
+      var SPOTLIGHT_FIT_ALLOWANCE = 260;
+      var VIDEO_PARALLAX_RANGE = 90; // px of total vertical travel for the poster parallax
+
+      // Cached measurements, refreshed by remeasure() — never read live
+      // inside the scroll handler itself.
+      var videoFrameDocTop = 0; // absolute document Y of .video__frame's top
+      var videoFrameHeightPx = 0; // .video__frame's rendered height
+
+      // The spotlight pin (spotlight stays put while the video scrolls up
+      // over it) only makes sense when the spotlight's own content
+      // actually fits within the viewport with it pinned — position:sticky
+      // holds the WHOLE box in place; if that box is taller than the
+      // viewport, whatever's below the fold (the CTA buttons, on this
+      // page) is simply unreachable for as long as it stays pinned. On
+      // shorter windows the spotlight is often taller than the viewport,
+      // so here we measure it and fall back to plain, un-pinned scrolling
+      // whenever it wouldn't comfortably fit — buttons stay reachable via
+      // ordinary scrolling on every screen size, full stop.
+      //
+      // .video gets a negative margin-top pulling it up by exactly
+      // SPOTLIGHT_OVERLAP_RANGE. Reason: with sticky positioning, the
+      // moment the spotlight's freeze RELEASES is mathematically always
+      // the exact same scroll position where the very next element's
+      // (untransformed) top would first reach the bottom of the viewport
+      // — that's inherent to how sticky containers work, not something any
+      // amount of tuning the pin's height changes. Left alone, that means
+      // video would only ever start becoming visible right as the freeze
+      // ends, never DURING it. Pulling video up by the same amount as the
+      // pin's own scroll budget gives it that budget as a head start, so
+      // it starts entering right as the freeze begins and keeps climbing
+      // the whole time the spotlight is held in place — still plain,
+      // untransformed document flow (no JS moves it, no easing), just
+      // shifted earlier via a static negative margin.
+      var remeasure = function () {
+        if (spotlightPin && spotlightEl) {
+          spotlightEl.style.position = ''; // reset before measuring natural height
+          spotlightEl.style.top = '';
+          var contentHeight = spotlightEl.offsetHeight;
+          var fits = window.innerWidth > 1024 && (contentHeight - SPOTLIGHT_FIT_ALLOWANCE) <= window.innerHeight;
+          if (fits) {
+            spotlightPin.style.height = (contentHeight + SPOTLIGHT_OVERLAP_RANGE) + 'px';
+            // The sticky offset at which the element's BOTTOM edge lands
+            // exactly on the viewport's bottom edge — this is what makes
+            // it freeze once the section has fully scrolled into view,
+            // rather than as soon as its top touches the top of the
+            // viewport.
+            spotlightEl.style.top = (window.innerHeight - contentHeight) + 'px';
+            if (overlapVideo) {
+              overlapVideo.style.marginTop = '-' + SPOTLIGHT_OVERLAP_RANGE + 'px';
+            }
+          } else {
+            spotlightPin.style.height = '';
+            spotlightEl.style.position = 'static';
+            if (overlapVideo) {
+              overlapVideo.style.marginTop = '';
+            }
+          }
         }
+        if (videoFrame) {
+          var frameRect = videoFrame.getBoundingClientRect();
+          videoFrameDocTop = frameRect.top + window.scrollY;
+          videoFrameHeightPx = frameRect.height;
+        }
+      };
+
+      var ticking = false;
+      var update = function () {
+        ticking = false;
+        var scrollY = window.scrollY;
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+        var isDesktop = vw > 1024;
+
+        // ---- reads/computations only above this line ----
+
+        // Hero: shrinks from 687px to 527px in lockstep with scroll,
+        // finishing exactly as .hero-pin's sticky budget runs out.
+        if (hero) {
+          if (reduceMotion || !isDesktop) {
+            hero.style.height = '';
+          } else {
+            var heroProgress = Math.max(0, Math.min(1, scrollY / HERO_SCROLL_RANGE));
+            hero.style.height = (HERO_MAX_HEIGHT - HERO_SCROLL_RANGE * heroProgress) + 'px';
+          }
+        }
+
+        // Brand story video: classic background-parallax. The poster is
+        // oversized (124% height, see CSS) and clipped by the frame's
+        // overflow:hidden, so it has room to slide vertically — moving
+        // slower than the page itself as the frame passes through the
+        // viewport, which reads as depth.
+        if (videoPoster && videoFrame) {
+          if (reduceMotion) {
+            videoPoster.style.transform = '';
+          } else {
+            var frameTop = videoFrameDocTop - scrollY;
+            var parallaxProgress = (vh - frameTop) / (vh + videoFrameHeightPx);
+            parallaxProgress = Math.max(0, Math.min(1, parallaxProgress));
+            var offset = (parallaxProgress - 0.5) * VIDEO_PARALLAX_RANGE;
+            videoPoster.style.transform = 'translateY(' + offset.toFixed(1) + 'px)';
+          }
+        }
+      };
+
+      var onScrollOrResize = function () {
+        if (!ticking) {
+          ticking = true;
+          window.requestAnimationFrame(update);
+        }
+      };
+      var onResize = function () {
+        remeasure();
+        onScrollOrResize();
+      };
+
+      remeasure();
+      update();
+      window.addEventListener('scroll', onScrollOrResize, { passive: true });
+      window.addEventListener('resize', onResize);
+      // pinStartDocY is the document Y of spotlightPin's own top — it only
+      // depends on the height of everything ABOVE it (nav, hero, highlight
+      // cards, "Know our product"), not on spotlight's own content. Any of
+      // those images loading late (typical: they're still fetching at
+      // DOMContentLoaded) reflows everything below them, silently
+      // invalidating the very first remeasure() — which then made the
+      // overlap start too early relative to where the spotlight visually
+      // ends up. So: re-measure on every image load anywhere above
+      // spotlightPin, on full window 'load' (covers webfonts/anything
+      // else still settling), and once more shortly after as a safety net.
+      document.querySelectorAll('img').forEach(function (img) {
+        if (spotlightPin && (img.compareDocumentPosition(spotlightPin) & Node.DOCUMENT_POSITION_FOLLOWING) && !img.complete) {
+          img.addEventListener('load', onResize, { once: true });
+        }
+      });
+      window.addEventListener('load', onResize);
+      setTimeout(onResize, 500);
+      setTimeout(onResize, 1500);
+      // Re-measure once images inside the spotlight finish loading —
+      // offsetHeight taken before then would undercount and cut the pin
+      // (and the video slide's reference point) short.
+      if (spotlightEl) {
+        spotlightEl.querySelectorAll('img').forEach(function (img) {
+          if (!img.complete) {
+            img.addEventListener('load', onResize, { once: true });
+          }
+        });
       }
 
       // Generic fade-up-on-scroll for everything else. Elements that are
