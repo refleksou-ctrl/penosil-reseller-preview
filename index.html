@@ -666,19 +666,14 @@
   .video__poster {
     position: absolute;
     left: 0;
-    top: -12%;
+    top: 0;
     width: 100%;
-    /* Oversized vs. the frame so it has room to slide as it parallaxes —
-       .video__frame clips the overflow via overflow:hidden, so the extra
-       height never peeks past the frame's edges. JS (see script) shifts
-       this translateY based on scroll position for the actual motion. */
-    height: 124%;
+    height: 100%;
     object-fit: cover;
     display: block;
     border: 0;
     padding: 0;
     cursor: pointer;
-    will-change: transform;
   }
   .video__play {
     position: absolute;
@@ -2490,8 +2485,6 @@
       var spotlightPin = document.querySelector('.spotlight-pin');
       var spotlightEl = spotlightPin ? spotlightPin.querySelector('.spotlight') : null;
       var overlapVideo = document.querySelector('.video');
-      var videoPoster = document.querySelector('.video__poster');
-      var videoFrame = document.querySelector('.video__frame');
 
       var HERO_MAX_HEIGHT = 687;
       var HERO_MIN_HEIGHT = 527;
@@ -2503,12 +2496,6 @@
       // spotlight on a very short window cropping the heading), not
       // everyday laptop-sized browser windows.
       var SPOTLIGHT_FIT_ALLOWANCE = 260;
-      var VIDEO_PARALLAX_RANGE = 90; // px of total vertical travel for the poster parallax
-
-      // Cached measurements, refreshed by remeasure() — never read live
-      // inside the scroll handler itself.
-      var videoFrameDocTop = 0; // absolute document Y of .video__frame's top
-      var videoFrameHeightPx = 0; // .video__frame's rendered height
 
       // The spotlight pin (spotlight stays put while the video scrolls up
       // over it) only makes sense when the spotlight's own content
@@ -2560,11 +2547,6 @@
             }
           }
         }
-        if (videoFrame) {
-          var frameRect = videoFrame.getBoundingClientRect();
-          videoFrameDocTop = frameRect.top + window.scrollY;
-          videoFrameHeightPx = frameRect.height;
-        }
       };
 
       var ticking = false;
@@ -2585,23 +2567,6 @@
           } else {
             var heroProgress = Math.max(0, Math.min(1, scrollY / HERO_SCROLL_RANGE));
             hero.style.height = (HERO_MAX_HEIGHT - HERO_SCROLL_RANGE * heroProgress) + 'px';
-          }
-        }
-
-        // Brand story video: classic background-parallax. The poster is
-        // oversized (124% height, see CSS) and clipped by the frame's
-        // overflow:hidden, so it has room to slide vertically — moving
-        // slower than the page itself as the frame passes through the
-        // viewport, which reads as depth.
-        if (videoPoster && videoFrame) {
-          if (reduceMotion) {
-            videoPoster.style.transform = '';
-          } else {
-            var frameTop = videoFrameDocTop - scrollY;
-            var parallaxProgress = (vh - frameTop) / (vh + videoFrameHeightPx);
-            parallaxProgress = Math.max(0, Math.min(1, parallaxProgress));
-            var offset = (parallaxProgress - 0.5) * VIDEO_PARALLAX_RANGE;
-            videoPoster.style.transform = 'translateY(' + offset.toFixed(1) + 'px)';
           }
         }
       };
