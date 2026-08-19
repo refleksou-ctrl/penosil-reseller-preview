@@ -904,7 +904,8 @@
     align-items: center;
     justify-content: center;
   }
-  .process__icon img {
+  .process__icon img,
+  .process__icon svg {
     display: block;
   }
   .process__step-body {
@@ -1641,6 +1642,64 @@
   .partner__grid.reveal.is-visible .mic-draw {
     stroke-dashoffset: 0;
   }
+  /* How-it-works step icons: pop in on their own bouncy transform instead
+     of just fading up with the step text — same treatment as the partner
+     icon grid above — and their internal glyph draws itself in once the
+     pop has mostly settled. Each icon keeps the .reveal class so it's
+     still scroll-triggered by the shared IntersectionObserver and still
+     honors each step's own --reveal-delay stagger (0 / 0.18s / 0.36s),
+     just with a bouncier transform than the plain fade-up used elsewhere.
+     pathLength="1" is set on every drawn line/path in the markup so the
+     dasharray/dashoffset math below is always 0-to-1 regardless of each
+     shape's actual on-screen length. */
+  .process__icon.reveal {
+    opacity: 0;
+    transform: scale(0.35) rotate(-18deg);
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+  }
+  .process__icon.reveal.is-visible {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  .process-icon-svg line,
+  .process-icon-svg path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    transition: stroke-dashoffset 0.5s ease;
+  }
+  /* Step 1 — document lines draw in row by row, top to bottom. */
+  .process__icon.reveal.is-visible .submit-row line {
+    stroke-dashoffset: 0;
+  }
+  .process__icon.reveal.is-visible .submit-row--1 line { transition-delay: calc(var(--reveal-delay, 0s) + 0.5s); }
+  .process__icon.reveal.is-visible .submit-row--2 line { transition-delay: calc(var(--reveal-delay, 0s) + 0.62s); }
+  .process__icon.reveal.is-visible .submit-row--3 line { transition-delay: calc(var(--reveal-delay, 0s) + 0.74s); }
+  .process__icon.reveal.is-visible .submit-row--4 line { transition-delay: calc(var(--reveal-delay, 0s) + 0.86s); }
+  /* Step 2 — checkmark draws start to finish. */
+  .process__icon.reveal.is-visible .review-check {
+    stroke-dashoffset: 0;
+    transition-delay: calc(var(--reveal-delay, 0s) + 0.5s);
+    transition-duration: 0.6s;
+  }
+  /* Step 3 — diamond outline draws in, then the facet dot pops on top. */
+  .process__icon.reveal.is-visible .selling-diamond {
+    stroke-dashoffset: 0;
+    transition-delay: calc(var(--reveal-delay, 0s) + 0.5s);
+    transition-duration: 0.65s;
+  }
+  .process-icon-svg .selling-dot {
+    opacity: 0;
+    transform: scale(0.2);
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), stroke-dashoffset 0.3s ease;
+    transition-delay: calc(var(--reveal-delay, 0s) + 1.2s);
+  }
+  .process__icon.reveal.is-visible .selling-dot {
+    opacity: 1;
+    transform: scale(1);
+    stroke-dashoffset: 0;
+  }
   @media (prefers-reduced-motion: reduce) {
     .reveal {
       transition: none !important;
@@ -1692,6 +1751,21 @@
     .mic-draw {
       transition: none !important;
       stroke-dashoffset: 0 !important;
+    }
+    .process__icon {
+      transition: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+    .process-icon-svg line,
+    .process-icon-svg path {
+      transition: none !important;
+      stroke-dashoffset: 0 !important;
+    }
+    .selling-dot {
+      transition: none !important;
+      opacity: 1 !important;
+      transform: none !important;
     }
   }
   @media (prefers-reduced-motion: reduce) and (min-width: 1025px) {
@@ -2192,7 +2266,26 @@
     <p class="process__eyebrow reveal">How it works</p>
     <h2 class="process__heading reveal" style="--reveal-delay:0.1s">From application to first order</h2>
     <div class="process__row">
-      <div class="process__icon process__step--1 reveal"><img src="assets/step-icon-1-submit.svg" alt="" width="34" height="30"></div>
+      <div class="process__icon process__step--1 reveal" aria-hidden="true">
+        <svg class="process-icon-svg" width="34" height="30" viewBox="0 0 34 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <g class="submit-row submit-row--1">
+            <line pathLength="1" x1="7.19531" y1="0.399805" x2="33.5953" y2="0.399805" stroke="white" stroke-width="0.8"/>
+            <line pathLength="1" y1="0.399805" x2="4" y2="0.399805" stroke="white" stroke-width="0.8"/>
+          </g>
+          <g class="submit-row submit-row--2">
+            <line pathLength="1" x1="7.19531" y1="10.0004" x2="33.5953" y2="10.0004" stroke="white" stroke-width="0.8"/>
+            <line pathLength="1" y1="10.0004" x2="4" y2="10.0004" stroke="white" stroke-width="0.8"/>
+          </g>
+          <g class="submit-row submit-row--3">
+            <line pathLength="1" x1="7.19531" y1="20.0004" x2="33.5953" y2="20.0004" stroke="white" stroke-width="0.8"/>
+            <line pathLength="1" y1="19.6" x2="4" y2="19.6" stroke="white" stroke-width="0.8"/>
+          </g>
+          <g class="submit-row submit-row--4">
+            <line pathLength="1" x1="7.19531" y1="29.2006" x2="33.5953" y2="29.2006" stroke="white" stroke-width="0.8"/>
+            <line pathLength="1" y1="29.2006" x2="4" y2="29.2006" stroke="white" stroke-width="0.8"/>
+          </g>
+        </svg>
+      </div>
       <div class="process__step-body process__step--1 reveal">
         <p class="process__step-title">Submit application</p>
         <p class="process__step-text">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
@@ -2204,7 +2297,11 @@
         </svg>
       </div>
 
-      <div class="process__icon process__step--2 reveal" style="--reveal-delay:0.18s"><img src="assets/step-icon-2-review.svg" alt="" width="37" height="33"></div>
+      <div class="process__icon process__step--2 reveal" style="--reveal-delay:0.18s" aria-hidden="true">
+        <svg class="process-icon-svg" width="37" height="33" viewBox="0 0 37 33" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path class="review-check" pathLength="1" d="M0.3125 17.4436L12.4246 32.2393L36.3125 0.239258" stroke="white" stroke-width="0.8"/>
+        </svg>
+      </div>
       <div class="process__step-body process__step--2 reveal" style="--reveal-delay:0.18s">
         <p class="process__step-title">Review &amp; approval</p>
         <p class="process__step-text">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
@@ -2216,7 +2313,12 @@
         </svg>
       </div>
 
-      <div class="process__icon process__step--3 reveal" style="--reveal-delay:0.36s"><img src="assets/step-icon-3-selling.svg" alt="" width="80" height="80"></div>
+      <div class="process__icon process__step--3 reveal" style="--reveal-delay:0.36s" aria-hidden="true">
+        <svg class="process-icon-svg" width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path class="selling-diamond" pathLength="1" d="M33.2031 20L19.2031 48L43.2031 60.4L57.2031 32.4L48.8031 20H33.2031Z" stroke="white" stroke-width="0.8"/>
+          <path class="selling-dot" pathLength="1" d="M45.4004 24.6006C46.5048 24.6008 47.4004 25.4961 47.4004 26.6006C47.4002 27.7048 46.5047 28.6004 45.4004 28.6006C44.296 28.6006 43.4006 27.705 43.4004 26.6006C43.4004 25.496 44.2958 24.6006 45.4004 24.6006Z" stroke="white" stroke-width="0.8"/>
+        </svg>
+      </div>
       <div class="process__step-body process__step--3 reveal" style="--reveal-delay:0.36s">
         <p class="process__step-title">Start selling</p>
         <p class="process__step-text">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
@@ -2258,7 +2360,7 @@
       </ul>
     </div>
 
-    <form class="register__form-wrap reveal" style="--reveal-delay:0.15s" onsubmit="return false;">
+    <form class="register__form-wrap" onsubmit="return false;">
       <div class="register__fields">
         <div class="register__row">
           <!-- NOTE: Figma's label/placeholder pairing was mismatched (leftover dummy data) — corrected here per Ken's call; see the fix-pass note in chat. -->
